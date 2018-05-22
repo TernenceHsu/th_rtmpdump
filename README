@@ -218,3 +218,15 @@ URL-encoded fashion. E.g.
 is equivalent the rtmpdump parameters "-r rtmp://server/myapp -y somefile".
 
 Note that only the shortform (single letter) rtmpdump options are supported.
+
+----------------------------------------------------------------------------------
+Dependent libraries:
+ubuntu : apt install openssl libssl-dev
+
+Example:
+    ./rtmpdump -r rtmp://172.16.1.65:1935/vod/mp4:sample.mp4 -v -o test.flv
+    -r rtmp url addr
+    -v is live
+    -o output file
+
+
