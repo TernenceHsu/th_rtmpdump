@@ -11,7 +11,19 @@
 #include "librtmp/rtmp.h"
 #include "librtmp/log.h"
 
+// 实时统计帧率 时间间隔
+#define  MAX_COUNT_AVG_FRAME_TIME		(50)
+
 typedef unsigned short   WORD;
+#define int64_t signed long long
+
+
+int64_t OSA_getCurTimeInUsec(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (int64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+}
 
 
 int InitSockets()
@@ -35,26 +47,25 @@ void CleanupSockets()
 
 int main(int argc, char* argv[])
 {
+	if(argc != 2)
+	{
+		printf("usage:\n%s %s\n",argv[0],"[rtmp_url]");
+		exit(-1);
+	}
+
 	InitSockets();
-	
+
+	int i = 0;
 	double duration=-1;
 	int nRead;
 	//is live stream ?
 	int bLiveStream=TRUE;
-	
-	
+
 	int bufsize=1024*1024*10;	
 	char *buf=(char*)malloc(bufsize);
 	memset(buf,0,bufsize);
 	long countbufsize=0;
-	
-	FILE *fp=fopen("receive.flv","wb");
-	if (!fp){
-		RTMP_LogPrintf("Open File Error.\n");
-		CleanupSockets();
-		return -1;
-	}
-	
+
 	/* set log level */
 	//RTMP_LogLevel loglvl=RTMP_LOGDEBUG;
 	//RTMP_LogSetLevel(loglvl);
@@ -64,7 +75,7 @@ int main(int argc, char* argv[])
 	//set connection timeout,default 30s
 	rtmp->Link.timeout=10;	
 	// HKS's live URL
-	if(!RTMP_SetupURL(rtmp,"rtmp://live.hkstv.hk.lxdns.com/live/hks"))
+	if(!RTMP_SetupURL(rtmp,argv[1]))
 	{
 		RTMP_Log(RTMP_LOGERROR,"SetupURL Err\n");
 		RTMP_Free(rtmp);
@@ -93,15 +104,49 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
+
+	int frame_sec = 0;
+	int frame_avg = 0;
+	int frame_all = 0;
+	int frame_avg_ptime = 0;
+	
+	int64_t cur_time_usec = 0;
+	int64_t last_time_usec = 0;
+	int64_t start_time_usec = 0;
+	int64_t cost_time_sec = 0;
+
+	int frame_array[MAX_COUNT_AVG_FRAME_TIME];
+	int count_time = 5;
+
+	start_time_usec = OSA_getCurTimeInUsec();
+
 	while(nRead=RTMP_Read(rtmp,buf,bufsize)){
-		fwrite(buf,1,nRead,fp);
 
-		countbufsize+=nRead;
-		RTMP_LogPrintf("Receive: %5dByte, Total: %5.2fkB\n",nRead,countbufsize*1.0/1024);
+		cur_time_usec = OSA_getCurTimeInUsec();
+
+		// video
+		if(0x09 == buf[0])
+		{
+			frame_sec++;
+			frame_all++;
+
+			if(cur_time_usec/1000000 != last_time_usec/1000000)
+			{
+				last_time_usec = cur_time_usec;
+				cost_time_sec = (cur_time_usec - start_time_usec)/1000000 + 1;
+
+				frame_array[cost_time_sec%count_time] = frame_sec;
+				frame_avg_ptime = 0;
+				for(i = 0; i < count_time; i++)
+					frame_avg_ptime += frame_array[i];
+				frame_avg_ptime = frame_avg_ptime/count_time;
+				
+				printf("time:%llds  cur_fps:%d t_avg_fps=%d avg_fps:%d total_frames:%d  cost_time:%lld\n",
+					cur_time_usec/1000000,frame_sec,frame_avg_ptime,frame_all/cost_time_sec,frame_all,cost_time_sec);
+				frame_sec = 0;
+			}
+		}			
 	}
-
-	if(fp)
-		fclose(fp);
 
 	if(buf){
 		free(buf);
