@@ -11,8 +11,10 @@
 #include "librtmp/rtmp.h"
 #include "librtmp/log.h"
 
-// 实时统计帧率 时间间隔
+// 实时统计帧率 时间间隔 系统最大值
 #define  MAX_COUNT_AVG_FRAME_TIME		(50)
+// 实时统计帧率 时间间隔 实际统计值
+#define  COUNT_TIME_D					(5)
 
 typedef unsigned short   WORD;
 #define int64_t signed long long
@@ -116,9 +118,12 @@ int main(int argc, char* argv[])
 	int64_t cost_time_sec = 0;
 
 	int frame_array[MAX_COUNT_AVG_FRAME_TIME];
-	int count_time = 5;
+	int count_time = COUNT_TIME_D;
 
 	start_time_usec = OSA_getCurTimeInUsec();
+
+	for(i = 0; i < count_time; i++)
+		frame_array[i] = 0;
 
 	while(nRead=RTMP_Read(rtmp,buf,bufsize)){
 
@@ -141,8 +146,8 @@ int main(int argc, char* argv[])
 					frame_avg_ptime += frame_array[i];
 				frame_avg_ptime = frame_avg_ptime/count_time;
 				
-				printf("time:%llds  cur_fps:%d t_avg_fps=%d avg_fps:%d total_frames:%d  cost_time:%lld\n",
-					cur_time_usec/1000000,frame_sec,frame_avg_ptime,frame_all/cost_time_sec,frame_all,cost_time_sec);
+				printf("time:%llds\tcost_time:%lld\tcur_fps:%d\t%ds_avg_fps=%d\tavg_fps:%d\ttotal_frames:%d\n",
+					cur_time_usec/1000000,cost_time_sec,frame_sec,count_time,frame_avg_ptime,frame_all/cost_time_sec,frame_all);
 				frame_sec = 0;
 			}
 		}			
