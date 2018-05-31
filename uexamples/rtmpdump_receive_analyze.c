@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "librtmp/rtmp.h"
 #include "librtmp/log.h"
 
@@ -25,6 +26,16 @@ int64_t OSA_getCurTimeInUsec(void)
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return (int64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+}
+
+void OSA_print_time()
+{
+	time_t timep;
+	struct tm *p;
+	time(&timep);
+	p=gmtime(&timep);
+	printf("%04d/%02d/%02d",(1900+p->tm_year),(1+p->tm_mon),p->tm_mday);
+	printf(" %02d:%02d:%02d\t",p->tm_hour,p->tm_min,p->tm_sec);
 }
 
 
@@ -145,9 +156,10 @@ int main(int argc, char* argv[])
 				for(i = 0; i < count_time; i++)
 					frame_avg_ptime += frame_array[i];
 				frame_avg_ptime = frame_avg_ptime/count_time;
-				
-				printf("time:%llds\tcost_time:%lld\tcur_fps:%d\t%ds_avg_fps=%d\tavg_fps:%d\ttotal_frames:%d\n",
-					cur_time_usec/1000000,cost_time_sec,frame_sec,count_time,frame_avg_ptime,frame_all/cost_time_sec,frame_all);
+
+				OSA_print_time();
+				printf("cost_time:%lld\tcur_fps:%d\t%ds_avg_fps=%d\tavg_fps:%d\ttotal_frames:%d\n",
+					cost_time_sec,frame_sec,count_time,frame_avg_ptime,frame_all/cost_time_sec,frame_all);
 				frame_sec = 0;
 			}
 		}			
