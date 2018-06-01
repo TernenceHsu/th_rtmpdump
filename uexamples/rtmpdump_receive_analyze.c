@@ -13,9 +13,9 @@
 #include "librtmp/log.h"
 
 // 实时统计帧率 时间间隔 系统最大值
-#define  MAX_COUNT_AVG_FRAME_TIME		(50)
+#define  MAX_COUNT_AVG_FRAME_TIME		(120)
 // 实时统计帧率 时间间隔 实际统计值
-#define  COUNT_TIME_D					(5)
+#define  COUNT_TIME_D					(30)
 
 typedef unsigned short   WORD;
 #define int64_t signed long long
@@ -146,6 +146,7 @@ int main(int argc, char* argv[])
 			frame_sec++;
 			frame_all++;
 
+			/*
 			if(cur_time_usec/1000000 != last_time_usec/1000000)
 			{
 				last_time_usec = cur_time_usec;
@@ -161,7 +162,26 @@ int main(int argc, char* argv[])
 				printf("cost_time:%lld\tcur_fps:%d\t%ds_avg_fps=%d\tavg_fps:%d\ttotal_frames:%d\n",
 					cost_time_sec,frame_sec,count_time,frame_avg_ptime,frame_all/cost_time_sec,frame_all);
 				frame_sec = 0;
+
+				//if(abs(frame_avg_ptime - (frame_all/cost_time_sec)) > 4)
+				//	printf("-----------------------------------------------------------------------\n");
 			}
+			*/
+
+			if((cur_time_usec/1000000 - last_time_usec/1000000) >= count_time)
+			{
+				last_time_usec = cur_time_usec;
+				cost_time_sec = (cur_time_usec - start_time_usec)/1000000 + 1;
+
+				frame_avg_ptime = frame_sec/count_time;
+
+				OSA_print_time();
+				printf("cost_time:%lld\t%ds_avg_fps=%d\tavg_fps:%d\ttotal_frames:%d\n",
+					cost_time_sec,count_time,frame_avg_ptime,frame_all/cost_time_sec,frame_all);
+				
+				frame_sec = 0;
+			}
+
 		}			
 	}
 
