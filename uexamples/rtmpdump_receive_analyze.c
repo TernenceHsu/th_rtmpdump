@@ -35,7 +35,7 @@ void OSA_print_time()
 	time(&timep);
 	p=gmtime(&timep);
 	printf("%04d/%02d/%02d",(1900+p->tm_year),(1+p->tm_mon),p->tm_mday);
-	printf(" %02d:%02d:%02d\t",p->tm_hour,p->tm_min,p->tm_sec);
+	printf(" %02d:%02d:%02d\t",(p->tm_hour+8)%24,p->tm_min,p->tm_sec);
 }
 
 
@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
 	int frame_sec = 0;
 	int frame_avg = 0;
 	int frame_all = 0;
-	int frame_avg_ptime = 0;
+	float frame_avg_ptime = 0;
 	
 	int64_t cur_time_usec = 0;
 	int64_t last_time_usec = 0;
@@ -168,16 +168,17 @@ int main(int argc, char* argv[])
 			}
 			*/
 
+            /* 按30s 的粒度对输入的帧率 进行统计 */
 			if((cur_time_usec/1000000 - last_time_usec/1000000) >= count_time)
 			{
 				last_time_usec = cur_time_usec;
 				cost_time_sec = (cur_time_usec - start_time_usec)/1000000 + 1;
 
-				frame_avg_ptime = frame_sec/count_time;
+                frame_avg_ptime = (float)frame_sec/(float)count_time;
 
 				OSA_print_time();
-				printf("cost_time:%lld\t%ds_avg_fps=%d\tavg_fps:%d\ttotal_frames:%d\n",
-					cost_time_sec,count_time,frame_avg_ptime,frame_all/cost_time_sec,frame_all);
+                printf("cost_time:%lld\t%ds_avg_fps=%2.2f\t%ds_frames_num:%d\tavg_fps:%d\ttotal_frames:%d\n",
+                        cost_time_sec,count_time,frame_avg_ptime,count_time,frame_sec,frame_all/cost_time_sec,frame_all);
 				
 				frame_sec = 0;
 			}
