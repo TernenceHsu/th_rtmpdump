@@ -42,10 +42,18 @@ char* flvfilename="/mtfs/media/92d768563027d708b0cb81793d93b3bf-1527777710159.fl
 int ZINIT();//初始化相关
 void ZCLEAR();//清除相关
 
+
+int64_t OSA_getCurTimeInUsec(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (int64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+}
+
+
 int main(){
-	long start=0;
+	int64_t start_time = 0;
 	long perframetime=0;
-	long lasttime=0;
 	int bNextIsKey=1;
 	RTMP_LogLevel lvl=RTMP_LOGINFO;
 	FILE*fp=NULL;	
@@ -92,10 +100,10 @@ int main(){
 	}
 
 	printf("rtmpurl:%s\nflvfile:%s\nsend data ...\n",rtmpurl,flvfilename);
-////////////////////////////////////////发送数据//////////////////////
+    ////////////////////////////////////////发送数据//////////////////////
 	fseek(fp,9,SEEK_SET);//跳过前9个字节
 	fseek(fp,4,SEEK_CUR);//跳过4字节长度
-	start=time(NULL)-1;
+	start_time = OSA_getCurTimeInUsec();
 	perframetime=0;//上一帧时间戳
 	while(TRUE){
         
@@ -104,17 +112,13 @@ int main(){
 		uint32_t timestamp=0;//时间戳
 		uint32_t streamid=0;//流ID
 		uint32_t alldatalength=0;//该帧总长度
-	
-        
-		if(((time(NULL)-start)<(perframetime/1000))&&bNextIsKey){	
-			//发的太快就等一下
-			if(perframetime>lasttime){
-				printf("TimeStamp:%8lu ms\n",perframetime);
-				lasttime=perframetime;
-			}
-			usleep(800*1000);
-			continue;
-		}	
+
+        // 时间戳必须是从0开始
+        if(((OSA_getCurTimeInUsec()-start_time)/1000)  < perframetime){	
+            //发的太快就等一下，每一帧都同步一下时间
+            usleep(5*1000);
+            continue;
+        }
         
 		if(!ReadU8(&type,fp))
 			break;
@@ -151,9 +155,8 @@ int main(){
 			break;
 		perframetime=timestamp;
         
-        usleep(5*1000);
 
-///////////////判断下一帧是否关键帧////////////////
+        ///////////////判断下一帧是否关键帧////////////////
 
 		bNextIsKey=0;
 		if(!PeekU8(&type,fp))
@@ -169,8 +172,7 @@ int main(){
 			}
 			fseek(fp,-11,SEEK_CUR);
 		}
-        
-////////////////////////////////////		
+	
 	}
 	printf("\nSend Data Over\n");
 	fclose(fp);
